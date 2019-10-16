@@ -7,6 +7,7 @@ import com.leeda.parrot.parrot.service.ParrotService
 import com.leeda.parrot.utils.Color
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.io.IOException
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.util.concurrent.TimeUnit
@@ -22,7 +23,7 @@ class ParrotServiceImpl(
     }
 
     override fun streamingParrot(os: OutputStream, option: ParrotReaderOption) {
-        val ow: OutputStreamWriter = OutputStreamWriter(os)
+        val ow = OutputStreamWriter(os)
 
         val colors: Array<Color> = Color.values()
 
@@ -35,19 +36,27 @@ class ParrotServiceImpl(
             return newColor
         }
 
-        while (true) {
+        ow.run {
+            while (true) {
 
-            var lastColor: Color = colors[0];
+                var lastColor: Color = colors[0]
+                try {
+                    for (parrotFrame in parrotFrames) {
 
-            for (parrotFrame in parrotFrames) {
-                ow.write("\u001b[2J\u001b[H")
-                val newColor = selectColor(lastColor)
-                ow.write(newColor.ansiCode)
+                        this.write("\u001b[2J\u001b[H")
+                        val newColor = selectColor(lastColor)
+                        this.write(newColor.ansiCode)
 
-                ow.write(parrotFrame.getData(option))
-                ow.flush()
-                TimeUnit.MILLISECONDS.sleep(70)
-                lastColor = newColor
+                        this.write(parrotFrame.getData(option))
+                        this.flush()
+                        TimeUnit.MILLISECONDS.sleep(70)
+                        lastColor = newColor
+
+                    }
+                } catch (e: IOException) {
+                    println("closed stream")
+                    break
+                }
             }
         }
     }
